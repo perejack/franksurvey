@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 180 20% 97%;
+    --foreground: 210 30% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 30% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 30% 10%;
+    --primary: 168 72% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 180 18% 93%;
+    --secondary-foreground: 210 25% 18%;
+    --muted: 180 14% 94%;
+    --muted-foreground: 210 10% 46%;
+    --accent: 12 90% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 180 14% 90%;
+    --input: 180 14% 90%;
+    --ring: 168 72% 40%;
+    --radius: 1rem;
+
+    --premium-gold: 38 92% 52%;
+    --premium-gold-light: 32 95% 62%;
+    --kenya-red: 12 90% 58%;
+    --kenya-green: 168 72% 40%;
+    --kenya-black: 210 30% 10%;
+    --success: 160 65% 45%;
+    --wallet-gradient-start: 168 72% 32%;
+    --wallet-gradient-end: 180 65% 42%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 168 72% 40%;
+  }
+
+  .dark {
+    --background: 210 25% 7%;
+    --foreground: 180 15% 95%;
+    --card: 210 20% 11%;
+    --card-foreground: 180 15% 95%;
+    --popover: 210 20% 11%;
+    --popover-foreground: 180 15% 95%;
+    --primary: 168 72% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 18% 16%;
+    --secondary-foreground: 180 12% 90%;
+    --muted: 210 18% 16%;
+    --muted-foreground: 180 10% 58%;
+    --accent: 12 90% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 18% 20%;
+    --input: 210 18% 20%;
+    --ring: 168 72% 45%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 168 72% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 168 72% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--wallet-gradient-start)), hsl(var(--wallet-gradient-end)));
+  }
+  .gradient-gold {
+    background: linear-gradient(135deg, hsl(var(--premium-gold)), hsl(var(--premium-gold-light)));
+  }
+  .gradient-card {
+    background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--secondary)));
+  }
+  .gradient-coral {
+    background: linear-gradient(135deg, hsl(12, 90%, 58%), hsl(32, 95%, 62%));
+  }
+  .glass-card {
+    background: hsla(0, 0%, 100%, 0.82);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  .text-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--wallet-gradient-end)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-gold {
+    background: linear-gradient(135deg, hsl(var(--premium-gold)), hsl(var(--premium-gold-light)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-coral {
+    background: linear-gradient(135deg, hsl(12, 90%, 58%), hsl(32, 95%, 62%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .shadow-card {
+    box-shadow: 0 4px 24px -4px hsla(210, 30%, 10%, 0.07);
+  }
+  .shadow-card-hover {
+    box-shadow: 0 8px 32px -4px hsla(210, 30%, 10%, 0.12);
+  }
+  .shadow-primary {
+    box-shadow: 0 8px 24px -4px hsla(168, 72%, 40%, 0.3);
+  }
+  .shadow-coral {
+    box-shadow: 0 8px 24px -4px hsla(12, 90%, 58%, 0.3);
+  }
+}
