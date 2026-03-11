@@ -55,7 +55,7 @@ const categoryIcons: Record<string, string> = {
 
 const SurveyCard = ({ survey, index, isCompleted, isUnlocked, isNewlyUnlocked }: SurveyCardProps) => {
   const navigate = useNavigate();
-  const isActuallyUnlocked = isUnlocked || !survey.is_locked;
+  const isActuallyUnlocked = isUnlocked;
   const catImage = CATEGORY_IMAGES[survey.category];
 
   return (
@@ -66,7 +66,7 @@ const SurveyCard = ({ survey, index, isCompleted, isUnlocked, isNewlyUnlocked }:
       whileTap={{ scale: 0.98 }}
       onClick={() => {
         if (isCompleted) return;
-        survey.is_locked ? navigate("/wallet?tab=upgrade") : navigate(`/survey/${survey.id}`);
+        !isActuallyUnlocked ? navigate("/wallet?tab=upgrade") : navigate(`/survey/${survey.id}`);
       }}
       className={`bg-card rounded-2xl p-4 shadow-card hover:shadow-card-hover transition-all border border-border group relative ${
         isCompleted ? 'opacity-60 cursor-default' : 'cursor-pointer'
@@ -77,13 +77,6 @@ const SurveyCard = ({ survey, index, isCompleted, isUnlocked, isNewlyUnlocked }:
           <span className="bg-green-500 text-white px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1">
             <CheckCircle2 size={14} /> Completed
           </span>
-        </div>
-      )}
-      {!isActuallyUnlocked && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-xl">
-          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-            <Lock className="w-5 h-5 text-amber-600" />
-          </div>
         </div>
       )}
       <div className="flex items-start gap-3">
@@ -127,17 +120,12 @@ const SurveyCard = ({ survey, index, isCompleted, isUnlocked, isNewlyUnlocked }:
             KSH {survey.reward}
           </span>
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-            {survey.is_locked ? <Lock size={14} /> : <ChevronRight size={14} />}
+            {!isActuallyUnlocked ? <Lock size={14} /> : <ChevronRight size={14} />}
           </div>
         </div>
       </div>
       <div className="flex items-center gap-1 text-xs mt-2">
-        {!isActuallyUnlocked ? (
-          <div className="flex items-center gap-1 text-xs text-amber-600">
-            <Lock className="w-3 h-3" />
-            <span>Locked</span>
-          </div>
-        ) : isCompleted ? (
+        {isCompleted ? (
           <div className="flex items-center gap-1 text-xs text-emerald-600">
             <CheckCircle2 className="w-3 h-3" />
             <span>Completed</span>

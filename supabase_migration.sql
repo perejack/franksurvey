@@ -245,5 +245,39 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
 CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
 
 -- =====================================================
+-- FIX: Lock all surveys and unlock only first 13 for new users
+-- =====================================================
+
+-- Step 1: Lock ALL non-premium surveys first
+UPDATE surveys 
+SET is_locked = true, unlock_price = 2
+WHERE is_premium = false;
+
+-- Step 2: Unlock only first 13 surveys for new users (by created_at)
+UPDATE surveys 
+SET is_locked = false, unlock_price = null 
+WHERE id IN (
+  SELECT id FROM surveys 
+  WHERE is_premium = false 
+  ORDER BY created_at 
+  LIMIT 13
+);
+
+-- Verify: Check total free surveys and earnings potential
+SELECT 
+  COUNT(*) as free_surveys,
+  SUM(reward) as total_earnings,
+  STRING_AGG(title || ' (' || reward || ' KSH)', ', ' ORDER BY created_at) as free_survey_list
+FROM surveys 
+WHERE is_locked = false AND is_premium = false;
+
+-- Check locked surveys count
+SELECT 
+  COUNT(*) as locked_surveys,
+  SUM(reward) as locked_earnings_potential
+FROM surveys 
+WHERE is_locked = true AND is_premium = false;
+
+-- =====================================================
 -- MIGRATION COMPLETE
 -- =====================================================

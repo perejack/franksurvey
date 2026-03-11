@@ -34,7 +34,6 @@ const Signup = () => {
     if (error) {
       toast.error(error.message || "Failed to create account");
     } else {
-      toast.success("Account created! Please check your email to verify your account.");
       navigate("/login");
     }
 

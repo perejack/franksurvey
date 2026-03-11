@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Landing from "./pages/Landing";
 import EarningCapPage from "./pages/EarningCapPage";
+import ExtraSurveys from "./pages/ExtraSurveys";
 import NotFound from "./pages/NotFound";
 import BottomNav from "./components/BottomNav";
 
@@ -47,6 +48,7 @@ function AppContent() {
         <Route path="/survey/:id" element={<ProtectedRoute><SurveyTake /></ProtectedRoute>} />
         <Route path="/wallet" element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
         <Route path="/earning-cap" element={<ProtectedRoute><EarningCapPage /></ProtectedRoute>} />
+        <Route path="/extra-surveys" element={<ProtectedRoute><ExtraSurveys /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, CheckCircle2, X, Loader2 } from "lucide-react";
-import { SAMPLE_QUESTIONS } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -12,6 +11,7 @@ const SurveyTake = () => {
   const navigate = useNavigate();
   const { profile, refreshProfile } = useAuth();
   const [survey, setSurvey] = useState<any>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -23,6 +23,7 @@ const SurveyTake = () => {
   useEffect(() => {
     checkIfAlreadyCompleted();
     fetchSurvey();
+    fetchQuestions();
   }, [id]);
 
   async function checkIfAlreadyCompleted() {
@@ -63,6 +64,36 @@ const SurveyTake = () => {
     }
   }
 
+  async function fetchQuestions() {
+    if (!id) return;
+    console.log('Fetching questions for survey ID:', id);
+    try {
+      const { data, error } = await supabase
+        .from('survey_questions')
+        .select('*')
+        .eq('survey_id', id)
+        .order('order_number', { ascending: true });
+
+      console.log('Questions data:', data);
+      console.log('Questions error:', error);
+
+      if (error) throw error;
+      
+      // Format questions to match expected structure
+      const formattedQuestions = data?.map(q => ({
+        question: q.question_text,
+        options: Array.isArray(q.options) ? q.options : ['Option 1', 'Option 2', 'Option 3', 'Option 4']
+      })) || [];
+      
+      console.log('Formatted questions:', formattedQuestions);
+      console.log('Formatted questions count:', formattedQuestions.length);
+      
+      setQuestions(formattedQuestions);
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -97,7 +128,23 @@ const SurveyTake = () => {
 
   if (!survey) return null;
 
-  const questions = SAMPLE_QUESTIONS.slice(0, survey.questions_count || 5);
+  // Show error if no questions available
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-5">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-5">
+          <h1 className="text-2xl font-extrabold text-foreground">No Questions Available</h1>
+          <p className="text-muted-foreground">This survey doesn't have any questions yet.</p>
+          <div className="flex gap-3 pt-4">
+            <button onClick={() => navigate(-1)} className="flex-1 h-12 rounded-2xl bg-secondary text-secondary-foreground font-semibold">
+              Go Back
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   const question = questions[current];
   const progress = ((current + 1) / questions.length) * 100;
 
@@ -138,7 +185,6 @@ const SurveyTake = () => {
         return;
       }
 
-      // Create answers object
       const answersObject: Record<string, string> = {};
       questions.forEach((q, idx) => {
         answersObject[`q${idx + 1}`] = finalAnswers[idx];
@@ -202,10 +248,10 @@ const SurveyTake = () => {
           </motion.p>
           <p className="text-sm text-muted-foreground">Funds added to your wallet</p>
           <div className="flex gap-3 pt-4">
-            <button onClick={() => navigate("/")} className="flex-1 h-12 rounded-2xl bg-secondary text-secondary-foreground font-semibold">
+            <button onClick={() => navigate("/extra-surveys")} className="flex-1 h-12 rounded-2xl bg-secondary text-secondary-foreground font-semibold">
               More Surveys
             </button>
-            <button onClick={() => navigate("/")} className="flex-1 h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold shadow-primary">
+            <button onClick={() => navigate("/extra-surveys")} className="flex-1 h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold shadow-primary">
               Go Home
             </button>
           </div>

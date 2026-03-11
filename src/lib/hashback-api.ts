@@ -1,6 +1,6 @@
 const API_BASE_URL = import.meta.env.PROD ? "https://api.hashback.co.ke" : "/api/hashback";
 
-// User credentials - in production, these should come from environment variables or user settings
+// Hashback API Credentials
 const API_KEY = "h26210DzY5gys";
 const ACCOUNT_ID = "HP345842";
 

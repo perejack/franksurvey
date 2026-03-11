@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Search, ChevronRight, Star, TrendingUp, Download, ArrowUpRight, Sparkles, Loader2, Lock, Zap } from "lucide-react";
+import { Bell, Search, ChevronRight, Star, TrendingUp, Download, ArrowUpRight, Sparkles, Loader2, Lock, Zap, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -41,6 +41,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [showActivate, setShowActivate] = useState(false);
+  const [showMinWithdrawal, setShowMinWithdrawal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [unlockPaidTotal, setUnlockPaidTotal] = useState(0);
@@ -109,6 +110,38 @@ const Index = () => {
     }
   }, [location.state, surveys, completedSurveyIds, navigate]);
 
+  // Set initial unlocked surveys for new users (first 13) when surveys load
+  useEffect(() => {
+    if (surveys.length > 0 && profile?.id && unlockedSurveyIds.size === 0) {
+      // Check if user has any unlock history
+      const checkUnlockHistory = async () => {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('id')
+          .eq('user_id', profile.id)
+          .eq('type', 'upgrade')
+          .eq('status', 'completed')
+          .limit(1);
+        
+        // If no unlock history, unlock first 13 surveys
+        if (!error && (!data || data.length === 0)) {
+          const sortedSurveyIds = surveys
+            .filter(s => !s.is_premium)
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            .slice(0, 13)
+            .map(s => s.id);
+          
+          if (sortedSurveyIds.length > 0) {
+            console.log('New user - unlocking first 13 surveys:', sortedSurveyIds);
+            setUnlockedSurveyIds(new Set(sortedSurveyIds));
+          }
+        }
+      };
+      
+      checkUnlockHistory();
+    }
+  }, [surveys, profile?.id]);
+
   // Navigate to earning cap page when balance reaches 2000
   // REMOVED: Redirect logic that was sending users to earning-cap page
   // Users should see Home page with available surveys to complete
@@ -154,64 +187,80 @@ const Index = () => {
       console.log('Fetching unlock payments for user:', profile.id);
       const { data, error } = await supabase
         .from('transactions')
-        .select('amount, survey_id, reference')
+        .select('amount, survey_id, reference, status')
         .eq('user_id', profile.id)
-        .eq('type', 'upgrade')
-        .eq('status', 'completed');
+        .eq('type', 'upgrade');
 
       if (error) throw error;
-      const total = data?.reduce((sum, tx) => sum + (tx.amount || 0), 0) || 0;
-      console.log('Unlock payments found:', data?.length, 'Total:', total);
+      console.log('All upgrade transactions:', data);
+      
+      const completed = data?.filter(tx => tx.status === 'completed') || [];
+      const total = completed.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+      console.log('Completed unlock payments:', completed.length, 'Total:', total);
       setUnlockPaidTotal(total);
       
-      // Track which surveys this user has unlocked
+      // Track which surveys this user has unlocked from transactions
       const unlockedIds = new Set<string>();
-      data?.forEach(tx => {
-        // Check survey_id field (new way)
+      completed.forEach(tx => {
+        console.log('Processing transaction:', tx);
         if (tx.survey_id) {
+          console.log('Adding survey_id to unlocked:', tx.survey_id);
           unlockedIds.add(tx.survey_id);
         }
-        // Fallback: parse from reference field (old way) - format: unlock_${surveyId}_${timestamp}
-        else if (tx.reference && tx.reference.startsWith('unlock_')) {
-          const parts = tx.reference.split('_');
-          if (parts.length >= 2) {
-            unlockedIds.add(parts[1]);
-          }
-        }
       });
+      
       setUnlockedSurveyIds(unlockedIds);
     } catch (error) {
       console.error('Error fetching unlock payments:', error);
     }
   }
 
-  // Show ALL surveys (not filtering out locked ones - SurveyCard will handle locked state)
+  // Get IDs of locked surveys to exclude from free surveys
+  const lockedSurveyIds = new Set(surveys.filter(s => s.is_locked).map(s => s.id));
+  
+  // Only show 13 free surveys on home page - exclude all locked surveys completely
   const availableSurveys = surveys
-    .filter((s) => !s.is_premium)
-    .sort((a, b) => {
-      // Newly unlocked surveys go first
-      const aIsNew = newlyUnlockedIds.has(a.id) ? 1 : 0;
-      const bIsNew = newlyUnlockedIds.has(b.id) ? 1 : 0;
-      return bIsNew - aIsNew;
-    });
+    .filter((s) => !s.is_premium && !s.is_locked && !lockedSurveyIds.has(s.id))
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .slice(0, 13);
   const lockedSurveys = surveys.filter((s) => s.is_locked && !s.is_premium);
   const premiumSurveys = surveys.filter((s) => s.is_premium);
 
-  // Redirect to earning cap page when user has completed all free surveys
+  // Redirect to earning cap page when user has no more unlocked surveys to complete
   useEffect(() => {
+    console.log('Redirect check - loading:', loading, 'profile:', profile?.id, 'availableSurveys:', availableSurveys.length);
+    console.log('Redirect check - balance:', balance, 'completedCount:', completedCount, 'unlockedSurveyIds.size:', unlockedSurveyIds.size);
+    
     if (!loading && profile?.id && availableSurveys.length > 0) {
+      // Get unlocked surveys (both initially unlocked and user-unlocked)
       const unlockedSurveys = availableSurveys.filter(s => !s.is_locked || unlockedSurveyIds.has(s.id));
       const completedUnlockedSurveys = unlockedSurveys.filter(s => completedSurveyIds.has(s.id));
       
-      // If user has completed all unlocked (free) surveys, redirect to earning cap
-      if (completedUnlockedSurveys.length === unlockedSurveys.length && unlockedSurveys.length > 0) {
+      console.log('Unlocked surveys count:', unlockedSurveys.length);
+      console.log('Completed unlocked surveys:', completedUnlockedSurveys.length);
+      console.log('Completed IDs:', Array.from(completedSurveyIds));
+      
+      // Calculate remaining unlocked surveys that haven't been completed
+      const remainingUnlocked = unlockedSurveys.filter(s => !completedSurveyIds.has(s.id));
+      console.log('Remaining unlocked surveys:', remainingUnlocked.length);
+      
+      // Only redirect if NO unlocked surveys remain to complete
+      const noMoreSurveys = remainingUnlocked.length === 0;
+      
+      console.log('No more surveys to complete:', noMoreSurveys);
+      
+      // Redirect only when there are no more unlocked surveys available
+      if (noMoreSurveys) {
+        console.log('REDIRECTING TO EARNING CAP - No surveys left!');
         navigate('/earning-cap');
       }
     }
   }, [loading, profile?.id, availableSurveys, completedSurveyIds, unlockedSurveyIds, navigate]);
 
   const handleWithdrawClick = () => {
-    if (!profile?.is_active) {
+    if (balance < 2500) {
+      setShowMinWithdrawal(true);
+    } else if (!profile?.is_active) {
       setShowActivate(true);
     } else {
       setShowWithdraw(true);
@@ -388,7 +437,7 @@ const Index = () => {
                 survey={s} 
                 index={i}
                 isCompleted={completedSurveyIds.has(s.id)}
-                isUnlocked={unlockedSurveyIds.has(s.id) || !s.is_locked}
+                isUnlocked={unlockedSurveyIds.has(s.id)}
                 isNewlyUnlocked={newlyUnlockedIds.has(s.id)}
               />
             ))
@@ -454,6 +503,71 @@ const Index = () => {
           fetchUnlockPayments();
         }}
       />
+
+      {/* Minimum Withdrawal Popup */}
+      <AnimatePresence>
+        {showMinWithdrawal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-foreground/40"
+            onClick={() => setShowMinWithdrawal(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-card-foreground">Minimum Withdrawal</h2>
+                <button onClick={() => setShowMinWithdrawal(false)} className="p-2 rounded-full hover:bg-secondary">
+                  <X size={20} className="text-muted-foreground" />
+                </button>
+              </div>
+
+              <div className="text-center py-4 space-y-4">
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.1, type: "spring" }}>
+                  <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+                    <TrendingUp size={32} className="text-amber-600" />
+                  </div>
+                </motion.div>
+                
+                <div>
+                  <h3 className="text-xl font-bold text-card-foreground">Keep Going! 🚀</h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Minimum withdrawal is <span className="font-bold text-primary">KSH 2,500</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    You currently have <span className="font-semibold">KSH {balance.toLocaleString()}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Need <span className="font-semibold text-amber-600">KSH {(2500 - balance).toLocaleString()}</span> more to withdraw
+                  </p>
+                </div>
+
+                <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Complete more surveys to reach the withdrawal threshold!
+                  </p>
+                  <button 
+                    onClick={() => {
+                      setShowMinWithdrawal(false);
+                      navigate('/surveys');
+                    }}
+                    className="w-full h-12 rounded-xl gradient-primary text-primary-foreground font-bold text-sm"
+                  >
+                    Continue Tasking
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
