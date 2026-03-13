@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.PROD ? "https://api.hashback.co.ke" : "/api/hashback";
+// Use proxy to avoid CORS issues
+const API_BASE_URL = "/api/hashback";
 
 // Hashback API Credentials
 const API_KEY = "h26210DzY5gys";

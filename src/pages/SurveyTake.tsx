@@ -327,7 +327,7 @@ const SurveyTake = () => {
           </motion.div>
         </AnimatePresence>
 
-        <div className="py-6">
+        <div className="py-6 mb-20">
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleNext}

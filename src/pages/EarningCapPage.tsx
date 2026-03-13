@@ -17,7 +17,7 @@ interface Category {
 }
 
 const CATEGORIES: Category[] = [
-  { id: 'lifestyle', name: 'Lifestyle & Habits', description: 'Transport, shopping, weekends, food', unlockPrice: 2, totalEarnPotential: 525, surveyCount: 5, color: 'blue' },
+  { id: 'lifestyle', name: 'Lifestyle & Habits', description: 'Transport, shopping, weekends, food', unlockPrice: 150, totalEarnPotential: 525, surveyCount: 5, color: 'blue' },
   { id: 'mobile_tech', name: 'Mobile & Technology', description: 'M-Pesa, social media, apps, internet', unlockPrice: 190, totalEarnPotential: 1500, surveyCount: 5, color: 'green' },
   { id: 'consumer', name: 'Consumer Choices', description: 'Shopping, brands, airtime, supermarkets', unlockPrice: 210, totalEarnPotential: 2500, surveyCount: 5, color: 'purple' },
   { id: 'entertainment', name: 'Entertainment & Media', description: 'TV, movies, music, radio, sports', unlockPrice: 300, totalEarnPotential: 3000, surveyCount: 5, color: 'orange' },
