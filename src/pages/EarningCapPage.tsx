@@ -228,7 +228,7 @@ export default function EarningCapPage() {
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="font-bold text-sm">KSH {category.unlockPrice}</p>
-                        <p className="text-[10px] mt-1">Earn up to KSH {category.totalEarnPotential}</p>
+                        <p className="text-[10px] mt-1">Earn up to KSH {category.totalEarnPotential} more</p>
                       </div>
                     </div>
                   </div>
