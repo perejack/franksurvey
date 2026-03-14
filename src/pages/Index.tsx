@@ -284,11 +284,7 @@ const Index = () => {
   }, [loading, profile?.id, availableSurveys, completedSurveyIds, unlockedSurveyIds, navigate]);
 
   const handleWithdrawClick = () => {
-    if (!profile?.is_active) {
-      setShowActivate(true);
-    } else {
-      setShowWithdraw(true);
-    }
+    setShowWithdraw(true);
   };
 
   const handleWithdraw = async (amount: number, phone: string) => {
