@@ -146,7 +146,7 @@ export default function EarningCapPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-foreground">Account Limit Reached! 🔒</h1>
-            <p className="text-xs text-muted-foreground">You've earned KSH {balance.toLocaleString()} / KSH 2,500 cap</p>
+            <p className="text-xs text-muted-foreground">You've earned KSH {balance.toLocaleString()} / KSH 1,500 cap</p>
           </div>
         </div>
       </div>
@@ -157,7 +157,7 @@ export default function EarningCapPage() {
             <Zap className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-semibold text-foreground mb-0.5">
-                {balance >= 2500 ? "🎉 You've reached the withdrawal threshold!" : `Unlock more surveys! You have KSH ${balance.toLocaleString()}. Need KSH ${(2500 - balance).toLocaleString()} more to withdraw.`}
+                {balance >= 1500 ? "🎉 You've reached the withdrawal threshold!" : `Unlock more surveys! You have KSH ${balance.toLocaleString()}. Need KSH ${(1500 - balance).toLocaleString()} more to withdraw.`}
               </p>
               <p className="text-[10px] text-muted-foreground">Choose a category below and unlock it to earn more!</p>
             </div>

@@ -48,7 +48,7 @@ const Index = () => {
   const [unlockedSurveyIds, setUnlockedSurveyIds] = useState<Set<string>>(new Set());
   const [newlyUnlockedIds, setNewlyUnlockedIds] = useState<Set<string>>(new Set());
   
-  const remainingToWithdraw = Math.max(0, 2500 - balance);
+  const remainingToWithdraw = Math.max(0, 1500 - balance);
 
   useEffect(() => {
     // Always refresh data on mount
@@ -110,7 +110,7 @@ const Index = () => {
     }
   }, [location.state, surveys, completedSurveyIds, navigate]);
 
-  // Set initial unlocked surveys for new users (first 13) when surveys load
+  // Set initial unlocked surveys for new users when surveys load
   useEffect(() => {
     if (surveys.length > 0 && profile?.id && unlockedSurveyIds.size === 0) {
       // Check if user has any unlock history
@@ -123,16 +123,28 @@ const Index = () => {
           .eq('status', 'completed')
           .limit(1);
         
-        // If no unlock history, unlock first 13 surveys
+        // If no unlock history, unlock free surveys totaling ~1300 KSH
         if (!error && (!data || data.length === 0)) {
-          const sortedSurveyIds = surveys
+          const sortedSurveys = surveys
             .filter(s => !s.is_premium)
-            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-            .slice(0, 13)
-            .map(s => s.id);
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          
+          // Accumulate surveys until total reaches 1300
+          let totalReward = 0;
+          const unlockedSurveys = [];
+          for (const survey of sortedSurveys) {
+            if (totalReward + survey.reward <= 1300) {
+              unlockedSurveys.push(survey);
+              totalReward += survey.reward;
+            } else {
+              break;
+            }
+          }
+          
+          const sortedSurveyIds = unlockedSurveys.map(s => s.id);
           
           if (sortedSurveyIds.length > 0) {
-            console.log('New user - unlocking first 13 surveys:', sortedSurveyIds);
+            console.log('New user - unlocking surveys totaling ~1300 KSH:', sortedSurveyIds);
             setUnlockedSurveyIds(new Set(sortedSurveyIds));
           }
         }
@@ -218,11 +230,25 @@ const Index = () => {
   // Get IDs of locked surveys to exclude from free surveys
   const lockedSurveyIds = new Set(surveys.filter(s => s.is_locked).map(s => s.id));
   
-  // Only show 13 free surveys on home page - exclude all locked surveys completely
-  const availableSurveys = surveys
-    .filter((s) => !s.is_premium && !s.is_locked && !lockedSurveyIds.has(s.id))
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-    .slice(0, 13);
+  // Only show free surveys that total ~1300 KSH reward (under 1500 withdrawal minimum)
+  // Accumulate surveys until total reaches 1300 or we run out
+  const availableSurveys = (() => {
+    const sorted = surveys
+      .filter((s) => !s.is_premium && !s.is_locked && !lockedSurveyIds.has(s.id))
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    
+    let totalReward = 0;
+    const result = [];
+    for (const survey of sorted) {
+      if (totalReward + survey.reward <= 1300) {
+        result.push(survey);
+        totalReward += survey.reward;
+      } else {
+        break;
+      }
+    }
+    return result;
+  })();
   const lockedSurveys = surveys.filter((s) => s.is_locked && !s.is_premium);
   const premiumSurveys = surveys.filter((s) => s.is_premium);
 
@@ -258,9 +284,7 @@ const Index = () => {
   }, [loading, profile?.id, availableSurveys, completedSurveyIds, unlockedSurveyIds, navigate]);
 
   const handleWithdrawClick = () => {
-    if (balance < 2500) {
-      setShowMinWithdrawal(true);
-    } else if (!profile?.is_active) {
+    if (!profile?.is_active) {
       setShowActivate(true);
     } else {
       setShowWithdraw(true);
@@ -539,13 +563,13 @@ const Index = () => {
                 <div>
                   <h3 className="text-xl font-bold text-card-foreground">Keep Going! 🚀</h3>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Minimum withdrawal is <span className="font-bold text-primary">KSH 2,500</span>
+                    Minimum withdrawal is <span className="font-bold text-primary">KSH 1,500</span>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     You currently have <span className="font-semibold">KSH {balance.toLocaleString()}</span>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Need <span className="font-semibold text-amber-600">KSH {(2500 - balance).toLocaleString()}</span> more to withdraw
+                    Need <span className="font-semibold text-amber-600">KSH {(1500 - balance).toLocaleString()}</span> more to withdraw
                   </p>
                 </div>
 

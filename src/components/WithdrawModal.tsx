@@ -11,7 +11,7 @@ interface WithdrawModalProps {
   onUpgrade?: () => void;
 }
 
-const QUICK_AMOUNTS = [2500, 3000, 5000, 10000];
+const QUICK_AMOUNTS = [1500, 3000, 5000, 10000];
 
 const isValidPhoneNumber = (phone: string): boolean => {
   return /^(07|01)\d{8}$/.test(phone);
@@ -20,16 +20,23 @@ const isValidPhoneNumber = (phone: string): boolean => {
 const WithdrawModal = ({ isOpen, onClose, balance, onWithdraw, onUpgrade }: WithdrawModalProps) => {
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
-  const [step, setStep] = useState<"form" | "confirm" | "success">("form");
+  const [step, setStep] = useState<"form" | "confirm" | "success" | "insufficient">("form");
 
   const numAmount = parseInt(amount) || 0;
-  const isValid = numAmount >= 2500 && numAmount <= balance && isValidPhoneNumber(phone);
+  const MIN_WITHDRAWAL = 1500;
+  const isValid = numAmount >= MIN_WITHDRAWAL && numAmount <= balance && isValidPhoneNumber(phone);
+  const remainingToWithdraw = Math.max(0, MIN_WITHDRAWAL - balance);
 
   const handleSubmit = () => {
-    if (step === "form" && isValid) {
-      setStep("confirm");
+    if (step === "form") {
+      if (balance < MIN_WITHDRAWAL) {
+        setStep("insufficient");
+      } else if (!isValid) {
+        return;
+      } else {
+        setStep("confirm");
+      }
     } else if (step === "confirm") {
-      // Skip STK push - just submit withdrawal request
       setStep("success");
       onWithdraw(numAmount, phone);
     }
@@ -83,7 +90,7 @@ const WithdrawModal = ({ isOpen, onClose, balance, onWithdraw, onUpgrade }: With
                   />
                   <div className="flex items-center gap-1 mt-2">
                     <AlertCircle size={12} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Minimum withdrawal: KSH 2,500</span>
+                    <span className="text-xs text-muted-foreground">Minimum withdrawal: KSH 1,500</span>
                   </div>
                   <div className="flex gap-2 mt-3">
                     {QUICK_AMOUNTS.map((amt) => (
@@ -119,8 +126,7 @@ const WithdrawModal = ({ isOpen, onClose, balance, onWithdraw, onUpgrade }: With
 
                 <button
                   onClick={handleSubmit}
-                  disabled={!isValid}
-                  className="w-full h-14 rounded-2xl gradient-primary text-primary-foreground font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed shadow-primary transition-all active:scale-[0.98]"
+                  className="w-full h-14 rounded-2xl gradient-primary text-primary-foreground font-bold text-base shadow-primary transition-all active:scale-[0.98]"
                 >
                   Continue
                 </button>
@@ -164,6 +170,48 @@ const WithdrawModal = ({ isOpen, onClose, balance, onWithdraw, onUpgrade }: With
                   Go Back
                 </button>
               </div>
+            )}
+
+            {step === "insufficient" && (
+              <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center py-6 space-y-5">
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.1, type: "spring" }}>
+                  <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+                    <AlertCircle size={40} className="text-amber-600" />
+                  </div>
+                </motion.div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold text-card-foreground">Insufficient Balance</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Your current balance: <span className="font-bold text-primary">KSH {balance.toLocaleString()}</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Minimum withdrawal: <span className="font-bold text-primary">KSH {MIN_WITHDRAWAL.toLocaleString()}</span>
+                  </p>
+                  <p className="text-sm text-amber-600 font-semibold">
+                    You need KSH {remainingToWithdraw.toLocaleString()} more to withdraw
+                  </p>
+                </div>
+
+                <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Complete more surveys to reach the withdrawal threshold!
+                  </p>
+                  <button 
+                    onClick={() => {
+                      setStep("form");
+                      onClose();
+                    }}
+                    className="w-full h-12 rounded-xl gradient-primary text-primary-foreground font-bold text-sm"
+                  >
+                    Continue Tasking
+                  </button>
+                </div>
+                
+                <button onClick={() => setStep("form")} className="text-sm text-muted-foreground hover:text-foreground">
+                  Go Back
+                </button>
+              </motion.div>
             )}
 
             {step === "success" && (

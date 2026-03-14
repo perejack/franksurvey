@@ -178,9 +178,7 @@ export default function ExtraSurveys() {
         {/* Withdraw Button */}
         <button
           onClick={() => {
-            if (balance < 2500) {
-              setShowMinWithdrawal(true);
-            } else if (!profile?.is_active) {
+            if (!profile?.is_active) {
               setShowActivate(true);
             } else {
               setShowWithdraw(true);
@@ -329,13 +327,13 @@ export default function ExtraSurveys() {
                 <div>
                   <h3 className="text-xl font-bold text-card-foreground">Keep Going! 🚀</h3>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Minimum withdrawal is <span className="font-bold text-primary">KSH 2,500</span>
+                    Minimum withdrawal is <span className="font-bold text-primary">KSH 1,500</span>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     You currently have <span className="font-semibold">KSH {balance.toLocaleString()}</span>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Need <span className="font-semibold text-amber-600">KSH {(2500 - balance).toLocaleString()}</span> more to withdraw
+                    Need <span className="font-semibold text-amber-600">KSH {(1500 - balance).toLocaleString()}</span> more to withdraw
                   </p>
                 </div>
 
