@@ -80,7 +80,7 @@ export default function EarningCapModal({ isOpen, onClose, balance, lockedSurvey
 
   // Get earnings potential based on survey reward
   const getEarningsPotential = (reward: number) => {
-    if (reward === 139 || reward === 190) return 1000;
+    if (reward === 30 || reward === 139 || reward === 190) return 1000;
     if (reward === 200) return 3000;
     if (reward === 180) return 3000;
     if (reward === 160) return 5000;
