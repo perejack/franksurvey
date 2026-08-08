@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/hashback/(.*)", "destination": "https://api.hashback.co.ke/$1" },
+    { "source": "/api/payhero/(.*)", "destination": "https://backend.payhero.co.ke/api/v2/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

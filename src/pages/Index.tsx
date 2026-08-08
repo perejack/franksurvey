@@ -13,6 +13,7 @@ import UnlockTaskModal from "@/components/UnlockTaskModal";
 import { CATEGORIES } from "@/lib/store";
 import avatarImg from "@/assets/avatar-default.png";
 import dailyTasksBg from "@/assets/daily-tasks-bg.jpg";
+import { FomoNotifications } from "@/components/FomoNotifications";
 
 // Category images
 import catLifestyle from "@/assets/cat-lifestyle.png";
@@ -326,6 +327,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
+      <FomoNotifications />
       {/* Header */}
       <div className="px-5 pt-6 pb-2">
         <div className="flex items-center justify-between mb-5">

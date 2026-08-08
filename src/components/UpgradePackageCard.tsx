@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Crown, Zap, Gem, X, Smartphone, CheckCircle2, AlertCircle } from "lucide-react";
 import mpesaIcon from "@/assets/mpesa-icon.png";
-import { initiateSTKPush, pollTransactionStatus, isValidPhoneNumber } from "@/lib/hashback-api";
+import { initiateSTKPush, pollTransactionStatus, isValidPhoneNumber } from "@/lib/payhero-api";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";

@@ -12,10 +12,10 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
     proxy: {
-      "/api/hashback": {
-        target: "https://api.hashback.co.ke",
+      "/api/payhero": {
+        target: "https://backend.payhero.co.ke/api/v2",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/hashback/, ""),
+        rewrite: (path) => path.replace(/^\/api\/payhero/, ""),
         secure: true,
       },
     },

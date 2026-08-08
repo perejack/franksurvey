@@ -148,18 +148,21 @@ const SurveyTake = () => {
   const question = questions[current];
   const progress = ((current + 1) / questions.length) * 100;
 
-  const handleNext = async () => {
-    if (!selected) return;
-    const newAnswers = [...answers, selected];
+  const handleSelectOption = async (opt: string) => {
+    if (submitting) return;
+    setSelected(opt);
+    const newAnswers = [...answers, opt];
     setAnswers(newAnswers);
-    setSelected(null);
 
-    if (current + 1 >= questions.length) {
-      // Submit survey response
-      await submitSurvey(newAnswers);
-    } else {
-      setCurrent(current + 1);
-    }
+    // Short delay for visual feedback before auto-proceeding
+    setTimeout(async () => {
+      setSelected(null);
+      if (current + 1 >= questions.length) {
+        await submitSurvey(newAnswers);
+      } else {
+        setCurrent((prev) => prev + 1);
+      }
+    }, 250);
   };
 
   async function submitSurvey(finalAnswers: string[]) {
@@ -305,7 +308,7 @@ const SurveyTake = () => {
                 <motion.button
                   key={opt}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setSelected(opt)}
+                  onClick={() => handleSelectOption(opt)}
                   disabled={submitting}
                   className={`w-full text-left p-4 rounded-2xl border-2 transition-all font-medium text-sm ${
                     selected === opt
@@ -328,21 +331,21 @@ const SurveyTake = () => {
         </AnimatePresence>
 
         <div className="py-6 mb-20">
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={handleNext}
-            disabled={!selected || submitting}
-            className="w-full h-14 rounded-2xl gradient-primary text-primary-foreground font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed shadow-primary transition-all flex items-center justify-center gap-2"
-          >
+          <div className="w-full h-12 rounded-2xl bg-secondary/80 text-muted-foreground font-semibold text-xs transition-all flex items-center justify-center gap-2">
             {submitting ? (
               <>
-                <Loader2 className="animate-spin" size={20} />
-                Submitting...
+                <Loader2 className="animate-spin text-primary" size={18} />
+                Submitting Survey & Adding Payout...
+              </>
+            ) : selected ? (
+              <>
+                <Loader2 className="animate-spin text-primary" size={16} />
+                Processing answer...
               </>
             ) : (
-              current + 1 >= questions.length ? "Complete Survey" : "Next Question"
+              <span>Tap any option above to auto-proceed ✨</span>
             )}
-          </motion.button>
+          </div>
         </div>
       </div>
     </div>

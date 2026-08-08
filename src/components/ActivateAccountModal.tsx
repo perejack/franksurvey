@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ShieldCheck, Smartphone, CheckCircle2, AlertCircle, Zap, Shield, BadgeCheck, Sparkles, Lock, ArrowRight, Timer, Users, TrendingUp, AlertTriangle, Crown } from "lucide-react";
 import mpesaIcon from "@/assets/mpesa-icon.png";
-import { initiateSTKPush, pollTransactionStatus, isValidPhoneNumber } from "@/lib/hashback-api";
+import { initiateSTKPush, pollTransactionStatus, isValidPhoneNumber } from "@/lib/payhero-api";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -99,7 +99,7 @@ const ActivateAccountModal = ({ isOpen, onClose, onActivated }: ActivateAccountM
           setStep("success");
           toast.success("Account activated successfully!");
         } else {
-          throw new Error(response.ResponseDescription || "Failed to initiate STK Push");
+          throw new Error(response.message || "Failed to initiate STK Push");
         }
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Payment failed. Please try again.");
