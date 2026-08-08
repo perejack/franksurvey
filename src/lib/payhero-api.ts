@@ -1,5 +1,5 @@
 // PayHero API integration — Channel 11294
-// Routes through /api/payhero proxy to avoid CORS
+// Exact implementation copied from groupsupermarket-master
 
 const API_BASE_URL = "/api/payhero";
 const CHANNEL_ID = 11294;
@@ -16,7 +16,7 @@ export interface InitiateSTKPushResponse {
 
 export interface TransactionStatusResponse {
   success: boolean;
-  status: string; // "SUCCESS" | "FAILED" | "PENDING"
+  status: "completed" | "failed" | "pending";
   ResultCode?: string | number;
   ResultDesc?: string;
   provider_reference?: string;
@@ -25,14 +25,14 @@ export interface TransactionStatusResponse {
 }
 
 /**
- * Format phone to local 07XXXXXXXX or 01XXXXXXXX format (PayHero expects local format)
+ * Format phone to local 07XXXXXXXX or 01XXXXXXXX format
  */
 function formatPhoneNumber(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("0") && digits.length === 10) return digits;
-  if (digits.startsWith("254") && digits.length === 12) return `0${digits.slice(3)}`;
-  if ((digits.startsWith("7") || digits.startsWith("1")) && digits.length === 9) return `0${digits}`;
-  return digits;
+  let cleaned = phone.replace(/\D/g, "");
+  if (cleaned.startsWith("0") && cleaned.length === 10) return cleaned;
+  if (cleaned.startsWith("254") && cleaned.length === 12) return `0${cleaned.slice(3)}`;
+  if ((cleaned.startsWith("7") || cleaned.startsWith("1")) && cleaned.length === 9) return `0${cleaned}`;
+  return cleaned;
 }
 
 export function isValidPhoneNumber(phone: string): boolean {
@@ -51,7 +51,7 @@ export async function initiateSTKPush(
   const phone = formatPhoneNumber(phoneNumber);
 
   const payload = {
-    amount: Number(amount),
+    amount: Math.round(Number(amount)),
     phone_number: phone,
     channel_id: CHANNEL_ID,
     provider: "m-pesa",
@@ -77,7 +77,6 @@ export async function initiateSTKPush(
     throw new Error(data?.message || data?.error || `PayHero error: ${response.status}`);
   }
 
-  // PayHero returns reference in data.reference, data.CheckoutRequestID, data.id, or payload reference
   const checkoutId =
     data.reference ||
     data.CheckoutRequestID ||
@@ -92,12 +91,12 @@ export async function initiateSTKPush(
     success: true,
     CheckoutRequestID: checkoutId,
     reference: checkoutId,
-    message: data.message || "STK push sent to your phone",
+    message: data.message || "STK push sent! Check your phone and enter PIN.",
   };
 }
 
 /**
- * Check transaction status by reference
+ * Check payment status using groupsupermarket-master mapping logic
  */
 export async function checkTransactionStatus(
   reference: string
@@ -115,38 +114,46 @@ export async function checkTransactionStatus(
     console.log("PayHero status check response →", data);
 
     const resObj = (data.response || data.data || data) as Record<string, any>;
-    const statusStr = String(
-      data.status || data.Status || resObj.status || resObj.Status || ""
-    ).toUpperCase();
+    const rawStatus = String(
+      data.status || data.Status || resObj.status || resObj.Status || data.rawStatus || ""
+    ).trim().toUpperCase();
+
     const resultCode = String(
       data.ResultCode ?? resObj.ResultCode ?? data.result_code ?? resObj.result_code ?? ""
     );
 
-    // Comprehensive success detection
-    const isSuccess =
+    // Exact status mapping from groupsupermarket-master
+    let mappedStatus: "completed" | "failed" | "pending" = "pending";
+
+    if (
+      rawStatus === "SUCCESS" ||
+      rawStatus === "COMPLETED" ||
+      rawStatus === "PAID" ||
       data.success === true ||
       resObj.success === true ||
-      statusStr === "SUCCESS" ||
-      statusStr === "COMPLETED" ||
-      statusStr === "PAID" ||
-      resultCode === "0";
-
-    // Comprehensive failure detection
-    const isFailed =
-      (statusStr === "FAILED" || statusStr === "CANCELLED" || statusStr === "CANCELED") &&
-      resultCode !== "0" &&
-      resultCode !== "";
+      resultCode === "0"
+    ) {
+      mappedStatus = "completed";
+    } else if (
+      rawStatus === "FAILED" ||
+      rawStatus === "CANCELLED" ||
+      rawStatus === "CANCELED"
+    ) {
+      mappedStatus = "failed";
+    } else {
+      mappedStatus = "pending";
+    }
 
     const desc =
       resObj.ResultDesc ||
       data.ResultDesc ||
       data.message ||
       resObj.message ||
-      (isSuccess ? "Payment completed successfully" : "Processing...");
+      (mappedStatus === "completed" ? "Payment confirmed" : "Awaiting PIN entry");
 
     return {
-      success: isSuccess,
-      status: isSuccess ? "SUCCESS" : isFailed ? "FAILED" : "PENDING",
+      success: mappedStatus === "completed",
+      status: mappedStatus,
       ResultCode: resultCode,
       ResultDesc: desc,
       provider_reference:
@@ -158,58 +165,64 @@ export async function checkTransactionStatus(
       raw: data,
     };
   } catch (err) {
-    console.warn("PayHero status check fetch exception (swallowed):", err);
+    console.warn("PayHero status check network error (will retry):", err);
     return {
       success: false,
-      status: "PENDING",
-      message: "Checking transaction status...",
+      status: "pending",
+      message: "Awaiting PIN entry...",
     };
   }
 }
 
 /**
- * Poll for transaction status until success, failure or timeout
+ * Poll payment status using groupsupermarket-master exact polling pattern:
+ * - Only resolves completed when PayHero confirms SUCCESS/COMPLETED/PAID.
+ * - Rejects on explicit failure or timeout.
+ * - Retries on pending/network errors.
  */
 export async function pollTransactionStatus(
   checkoutId: string,
-  maxAttempts: number = 40,
-  intervalMs: number = 3000
+  maxAttempts: number = 25,
+  intervalMs: number = 4000
 ): Promise<TransactionStatusResponse> {
   return new Promise((resolve, reject) => {
     let attempts = 0;
 
     const checkStatus = async () => {
-      attempts++;
-      console.log(`Polling status attempt ${attempts}/${maxAttempts} for ${checkoutId}...`);
-
-      const status = await checkTransactionStatus(checkoutId);
-
-      if (status.success || status.status === "SUCCESS") {
-        console.log("Transaction confirmed SUCCESS! 🎉", status);
-        resolve(status);
-        return;
-      }
-
-      if (status.status === "FAILED") {
-        console.warn("Transaction confirmed FAILED ❌", status);
-        reject(new Error(status.ResultDesc || status.message || "Payment was cancelled or failed"));
-        return;
-      }
-
       if (attempts >= maxAttempts) {
-        console.warn("Polling reached max attempts. Treating as success if user entered PIN.");
-        // If money was deducted, resolve gracefully so user isn't stuck on error
-        resolve({
-          success: true,
-          status: "SUCCESS",
-          message: "Payment received",
-        });
+        console.warn("Payment status polling timed out.");
+        reject(new Error("Payment confirmation timed out. Please check your M-Pesa prompt and try again."));
         return;
       }
+      attempts++;
 
-      setTimeout(checkStatus, intervalMs);
+      console.log(`Polling payment status attempt ${attempts}/${maxAttempts} for ${checkoutId}...`);
+
+      try {
+        const res = await checkTransactionStatus(checkoutId);
+
+        if (res.status === "completed" || res.success) {
+          console.log("Payment status CONFIRMED COMPLETED! 🎉", res);
+          resolve(res);
+          return;
+        }
+
+        if (res.status === "failed") {
+          console.warn("Payment status CONFIRMED FAILED ❌", res);
+          reject(new Error(res.ResultDesc || res.message || "Payment failed or was cancelled"));
+          return;
+        }
+
+        // Still pending — continue polling after interval
+        setTimeout(checkStatus, intervalMs);
+      } catch (error) {
+        // Network error during check — continue polling after interval
+        console.warn("Polling attempt encountered error, retrying...", error);
+        setTimeout(checkStatus, intervalMs);
+      }
     };
 
-    checkStatus();
+    // Initial 3s delay before first status query (gives user time to see prompt)
+    setTimeout(checkStatus, 3000);
   });
 }
