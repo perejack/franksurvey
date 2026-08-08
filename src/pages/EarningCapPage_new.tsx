@@ -4,7 +4,7 @@ import { Lock, Zap, TrendingUp, ChevronLeft, Loader2, FolderOpen } from "lucide-
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
-import { initiateSTKPush, pollTransactionStatus } from "@/lib/hashback-api";
+import { initiateSTKPush, pollTransactionStatus } from "@/lib/payhero-api";
 
 interface Category {
   id: string;
