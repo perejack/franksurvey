@@ -1,5 +1,5 @@
 // PayHero API integration — Channel 11294
-// Exact implementation copied from groupsupermarket-master
+// Routes through /api/payhero proxy to avoid CORS
 
 const API_BASE_URL = "/api/payhero";
 const CHANNEL_ID = 11294;
@@ -8,8 +8,8 @@ const AUTH_TOKEN =
 
 export interface InitiateSTKPushResponse {
   success: boolean;
-  CheckoutRequestID?: string;
-  reference?: string;
+  CheckoutRequestID: string;
+  reference: string;
   message?: string;
   status?: string;
 }
@@ -46,16 +46,21 @@ export function isValidPhoneNumber(phone: string): boolean {
 export async function initiateSTKPush(
   amount: string,
   phoneNumber: string,
-  reference: string
+  customReference?: string
 ): Promise<InitiateSTKPushResponse> {
   const phone = formatPhoneNumber(phoneNumber);
+
+  // Guarantee 100% unique external reference for this specific payment attempt
+  const externalReference = customReference && !customReference.includes("undefined")
+    ? `${customReference}-${Date.now()}-${Math.floor(Math.random() * 10000)}`
+    : `FS-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 
   const payload = {
     amount: Math.round(Number(amount)),
     phone_number: phone,
     channel_id: CHANNEL_ID,
     provider: "m-pesa",
-    external_reference: reference,
+    external_reference: externalReference,
     description: "FrankSurvey Payment",
   };
 
@@ -77,26 +82,19 @@ export async function initiateSTKPush(
     throw new Error(data?.message || data?.error || `PayHero error: ${response.status}`);
   }
 
-  const checkoutId =
-    data.reference ||
-    data.CheckoutRequestID ||
-    data.checkout_request_id ||
-    data.checkoutRequestId ||
-    data.id ||
-    reference;
+  console.log("PayHero STK Push initiated →", data, "External Ref:", externalReference);
 
-  console.log("PayHero STK Push success →", data, "Checkout ID:", checkoutId);
-
+  // CRITICAL: Always return externalReference as CheckoutRequestID so status polling queries THIS NEW transaction!
   return {
     success: true,
-    CheckoutRequestID: checkoutId,
-    reference: checkoutId,
+    CheckoutRequestID: externalReference,
+    reference: externalReference,
     message: data.message || "STK push sent! Check your phone and enter PIN.",
   };
 }
 
 /**
- * Check payment status using groupsupermarket-master mapping logic
+ * Check payment status using PayHero external reference
  */
 export async function checkTransactionStatus(
   reference: string
@@ -122,16 +120,12 @@ export async function checkTransactionStatus(
       data.ResultCode ?? resObj.ResultCode ?? data.result_code ?? resObj.result_code ?? ""
     );
 
-    // Exact status mapping from groupsupermarket-master
+    // Strictly check for success on this specific transaction
     let mappedStatus: "completed" | "failed" | "pending" = "pending";
 
     if (
-      rawStatus === "SUCCESS" ||
-      rawStatus === "COMPLETED" ||
-      rawStatus === "PAID" ||
-      data.success === true ||
-      resObj.success === true ||
-      resultCode === "0"
+      (rawStatus === "SUCCESS" || rawStatus === "COMPLETED" || rawStatus === "PAID") &&
+      (data.success === true || resObj.success === true || resultCode === "0" || resultCode === "")
     ) {
       mappedStatus = "completed";
     } else if (
@@ -165,7 +159,7 @@ export async function checkTransactionStatus(
       raw: data,
     };
   } catch (err) {
-    console.warn("PayHero status check network error (will retry):", err);
+    console.warn("PayHero status check network error (retrying...):", err);
     return {
       success: false,
       status: "pending",
@@ -175,10 +169,10 @@ export async function checkTransactionStatus(
 }
 
 /**
- * Poll payment status using groupsupermarket-master exact polling pattern:
- * - Only resolves completed when PayHero confirms SUCCESS/COMPLETED/PAID.
+ * Poll payment status:
+ * - Resolves completed ONLY when PayHero explicitly confirms SUCCESS/COMPLETED/PAID for this exact reference.
  * - Rejects on explicit failure or timeout.
- * - Retries on pending/network errors.
+ * - Retries on pending or network errors.
  */
 export async function pollTransactionStatus(
   checkoutId: string,
@@ -196,7 +190,7 @@ export async function pollTransactionStatus(
       }
       attempts++;
 
-      console.log(`Polling payment status attempt ${attempts}/${maxAttempts} for ${checkoutId}...`);
+      console.log(`Polling payment status attempt ${attempts}/${maxAttempts} for ref [${checkoutId}]...`);
 
       try {
         const res = await checkTransactionStatus(checkoutId);
@@ -213,16 +207,16 @@ export async function pollTransactionStatus(
           return;
         }
 
-        // Still pending — continue polling after interval
+        // Still pending (user hasn't entered PIN yet) — poll again
         setTimeout(checkStatus, intervalMs);
       } catch (error) {
-        // Network error during check — continue polling after interval
+        // Network glitch during check — poll again
         console.warn("Polling attempt encountered error, retrying...", error);
         setTimeout(checkStatus, intervalMs);
       }
     };
 
-    // Initial 3s delay before first status query (gives user time to see prompt)
-    setTimeout(checkStatus, 3000);
+    // Initial 3.5s delay before first status check (gives user time to see STK prompt on phone)
+    setTimeout(checkStatus, 3500);
   });
 }
