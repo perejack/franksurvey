@@ -106,10 +106,18 @@ export default function EarningCapPage() {
 
       toast({ title: "M-Pesa Prompt Sent!", description: "Enter your M-Pesa PIN to complete payment." });
 
-      const pollResult = await pollTransactionStatus(checkoutRequestId, 12, 5000) as any;
-      if (pollResult && pollResult.ResultCode === "0") {
+      const pollResult = await pollTransactionStatus(checkoutRequestId, 25, 4000) as any;
+      const isSuccess = pollResult && (
+        pollResult.success === true ||
+        pollResult.status === "completed" ||
+        pollResult.status === "SUCCESS" ||
+        pollResult.ResultCode === "0" ||
+        pollResult.ResultCode === 0
+      );
+
+      if (isSuccess) {
         await supabase.from('transactions').update({ status: 'completed' }).eq('id', transaction.id);
-        toast({ title: "Category Unlocked! 🎉", description: `${category.name} is now available!` });
+        toast({ title: "Category Unlocked! 🎉", description: `${selectedCategory.name} is now available!` });
         navigate('/extra-surveys');
       } else {
         throw new Error(pollResult?.ResultDesc || 'Payment not completed');

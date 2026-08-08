@@ -268,11 +268,19 @@ export default function EarningCapPage() {
 
       const pollResult = await pollTransactionStatus(
         checkoutRequestId,
-        12,
-        5000
+        25,
+        4000
       ) as any;
 
-      if (pollResult && pollResult.ResultCode === "0") {
+      const isSuccess = pollResult && (
+        pollResult.success === true ||
+        pollResult.status === "completed" ||
+        pollResult.status === "SUCCESS" ||
+        pollResult.ResultCode === "0" ||
+        pollResult.ResultCode === 0
+      );
+
+      if (isSuccess) {
         await supabase
           .from('transactions')
           .update({ status: 'completed' })

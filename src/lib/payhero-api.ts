@@ -168,7 +168,7 @@ export async function checkTransactionStatus(
     return {
       success: mappedStatus === "completed",
       status: mappedStatus,
-      ResultCode: resultCode,
+      ResultCode: resultCode || (mappedStatus === "completed" ? "0" : ""),
       ResultDesc: desc,
       provider_reference:
         resObj.MpesaReceiptNumber ||
