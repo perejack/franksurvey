@@ -50,10 +50,9 @@ export async function initiateSTKPush(
 ): Promise<InitiateSTKPushResponse> {
   const phone = formatPhoneNumber(phoneNumber);
 
-  // Guarantee 100% unique external reference for this specific payment attempt
   const externalReference = customReference && !customReference.includes("undefined")
-    ? `${customReference}-${Date.now()}-${Math.floor(Math.random() * 10000)}`
-    : `FS-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    ? `${customReference}-${Date.now()}`
+    : `FS-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 
   const payload = {
     amount: Math.round(Number(amount)),
@@ -82,19 +81,29 @@ export async function initiateSTKPush(
     throw new Error(data?.message || data?.error || `PayHero error: ${response.status}`);
   }
 
-  console.log("PayHero STK Push initiated →", data, "External Ref:", externalReference);
+  console.log("PayHero STK Push initiated response →", data);
 
-  // CRITICAL: Always return externalReference as CheckoutRequestID so status polling queries THIS NEW transaction!
+  // PayHero returns reference in data.reference, data.CheckoutRequestID, data.id, or external_reference
+  const checkoutId =
+    data.reference ||
+    data.CheckoutRequestID ||
+    data.checkout_request_id ||
+    data.checkoutRequestId ||
+    data.id ||
+    externalReference;
+
+  console.log("STK Push initiated successfully. Tracking Reference ID:", checkoutId);
+
   return {
     success: true,
-    CheckoutRequestID: externalReference,
-    reference: externalReference,
+    CheckoutRequestID: checkoutId,
+    reference: checkoutId,
     message: data.message || "STK push sent! Check your phone and enter PIN.",
   };
 }
 
 /**
- * Check payment status using PayHero external reference
+ * Check payment status using PayHero transaction reference
  */
 export async function checkTransactionStatus(
   reference: string
@@ -111,6 +120,16 @@ export async function checkTransactionStatus(
     const data = await response.json().catch(() => ({}));
     console.log("PayHero status check response →", data);
 
+    if (response.status === 404 || data.error_code === "NOT_FOUND") {
+      console.warn("Transaction reference not indexed yet by PayHero, treating as pending...");
+      return {
+        success: false,
+        status: "pending",
+        message: "Awaiting M-Pesa PIN entry...",
+        raw: data,
+      };
+    }
+
     const resObj = (data.response || data.data || data) as Record<string, any>;
     const rawStatus = String(
       data.status || data.Status || resObj.status || resObj.Status || data.rawStatus || ""
@@ -120,12 +139,13 @@ export async function checkTransactionStatus(
       data.ResultCode ?? resObj.ResultCode ?? data.result_code ?? resObj.result_code ?? ""
     );
 
-    // Strictly check for success on this specific transaction
     let mappedStatus: "completed" | "failed" | "pending" = "pending";
 
     if (
-      (rawStatus === "SUCCESS" || rawStatus === "COMPLETED" || rawStatus === "PAID") &&
-      (data.success === true || resObj.success === true || resultCode === "0" || resultCode === "")
+      rawStatus === "SUCCESS" ||
+      rawStatus === "COMPLETED" ||
+      rawStatus === "PAID" ||
+      resultCode === "0"
     ) {
       mappedStatus = "completed";
     } else if (
@@ -159,25 +179,25 @@ export async function checkTransactionStatus(
       raw: data,
     };
   } catch (err) {
-    console.warn("PayHero status check network error (retrying...):", err);
+    console.warn("PayHero status check network exception (retrying...):", err);
     return {
       success: false,
       status: "pending",
-      message: "Awaiting PIN entry...",
+      message: "Awaiting M-Pesa PIN entry...",
     };
   }
 }
 
 /**
  * Poll payment status:
- * - Resolves completed ONLY when PayHero explicitly confirms SUCCESS/COMPLETED/PAID for this exact reference.
+ * - Resolves completed ONLY when PayHero explicitly returns SUCCESS/COMPLETED/PAID.
  * - Rejects on explicit failure or timeout.
- * - Retries on pending or network errors.
+ * - Retries on pending/404/network errors.
  */
 export async function pollTransactionStatus(
   checkoutId: string,
   maxAttempts: number = 25,
-  intervalMs: number = 4000
+  intervalMs: number = 3500
 ): Promise<TransactionStatusResponse> {
   return new Promise((resolve, reject) => {
     let attempts = 0;
@@ -185,7 +205,7 @@ export async function pollTransactionStatus(
     const checkStatus = async () => {
       if (attempts >= maxAttempts) {
         console.warn("Payment status polling timed out.");
-        reject(new Error("Payment confirmation timed out. Please check your M-Pesa prompt and try again."));
+        reject(new Error("Payment confirmation timed out. Please check your phone and try again."));
         return;
       }
       attempts++;
@@ -216,7 +236,7 @@ export async function pollTransactionStatus(
       }
     };
 
-    // Initial 3.5s delay before first status check (gives user time to see STK prompt on phone)
-    setTimeout(checkStatus, 3500);
+    // Initial 3s delay before first status check
+    setTimeout(checkStatus, 3000);
   });
 }
